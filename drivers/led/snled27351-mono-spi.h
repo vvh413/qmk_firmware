@@ -21,7 +21,7 @@
 #include "progmem.h"
 #include "util.h"
 
-// ======== DEPRECATED DEFINES - DO NOT USE ========
+#if 0
 #ifdef CKLED2001_TIMEOUT
 #    define SNLED27351_I2C_TIMEOUT CKLED2001_TIMEOUT
 #endif
@@ -50,6 +50,7 @@
 
 #define ckled2001_led snled27351_led_t
 #define g_ckled2001_leds g_snled27351_leds
+#endif
 // ========
 
 #define SNLED27351_REG_COMMAND 0xFD
@@ -127,25 +128,11 @@
 #define SNLED27351_LED_CURRENT_TUNE_LAST_ADDR 0x0B
 #define SNLED27351_LED_CURRENT_TUNE_LENGTH 0x0C
 
-#define SNLED27351_I2C_ADDRESS_GND 0x74
-#define SNLED27351_I2C_ADDRESS_SCL 0x75
-#define SNLED27351_I2C_ADDRESS_SDA 0x76
-#define SNLED27351_I2C_ADDRESS_VDDIO 0x77
-
-#if defined(LED_MATRIX_SNLED27351)
+#if defined(LED_MATRIX_SNLED27351_SPI)
 #    define SNLED27351_LED_COUNT LED_MATRIX_LED_COUNT
 #endif
 
-#if defined(SNLED27351_I2C_ADDRESS_4)
-#    define SNLED27351_DRIVER_COUNT 4
-#elif defined(SNLED27351_I2C_ADDRESS_3)
-#    define SNLED27351_DRIVER_COUNT 3
-#elif defined(SNLED27351_I2C_ADDRESS_2)
-#    define SNLED27351_DRIVER_COUNT 2
-#elif defined(SNLED27351_I2C_ADDRESS_1)
-#    define SNLED27351_DRIVER_COUNT 1
-#endif
-
+#define SNLED27351_DRIVER_COUNT (sizeof(cs_pins) / sizeof(pin_t))
 typedef struct snled27351_led_t {
     uint8_t driver : 2;
     uint8_t v;
@@ -155,8 +142,8 @@ extern const snled27351_led_t PROGMEM g_snled27351_leds[SNLED27351_LED_COUNT];
 
 void snled27351_init_drivers(void);
 void snled27351_init(uint8_t index);
-void snled27351_select_page(uint8_t index, uint8_t page);
-void snled27351_write_register(uint8_t index, uint8_t reg, uint8_t data);
+bool snled27351_write_register(uint8_t index, uint8_t page, uint8_t reg, uint8_t data);
+void snled27351_write_pwm_buffer(uint8_t index);
 
 void snled27351_set_value(int index, uint8_t value);
 void snled27351_set_value_all(uint8_t value);
@@ -171,7 +158,6 @@ float snled27351_get_load_ratio(void);
 // If the buffer is dirty, it will update the driver with the buffer.
 void snled27351_update_pwm_buffers(uint8_t index);
 void snled27351_update_led_control_registers(uint8_t index);
-
 void snled27351_flush(void);
 void snled27351_shutdown(void);
 void snled27351_exit_shutdown(void);
@@ -383,7 +369,7 @@ void snled27351_sw_shutdown(uint8_t index);
 #define CB12_CA16 0xBF
 
 // DEPRECATED - DO NOT USE
-
+#if 0
 #define A_1 CB1_CA1
 #define A_2 CB1_CA2
 #define A_3 CB1_CA3
@@ -587,3 +573,4 @@ void snled27351_sw_shutdown(uint8_t index);
 #define L_14 CB12_CA14
 #define L_15 CB12_CA15
 #define L_16 CB12_CA16
+#endif
