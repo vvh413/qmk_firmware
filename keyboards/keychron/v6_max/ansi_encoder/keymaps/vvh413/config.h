@@ -1,0 +1,9 @@
+#ifdef RGB_MATRIX_ENABLE
+
+/* solid #e100ff */
+#    define RGB_MATRIX_DEFAULT_MODE RGB_MATRIX_SOLID_COLOR
+#    define RGB_MATRIX_DEFAULT_HUE 208
+#    define RGB_MATRIX_DEFAULT_SAT 255
+#    define RGB_MATRIX_DEFAULT_VAL 255
+
+#endif
