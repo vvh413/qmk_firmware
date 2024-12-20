@@ -14,6 +14,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "color.h"
 #include "keycodes.h"
 #include QMK_KEYBOARD_H
 #include "keychron_common.h"
@@ -65,10 +66,36 @@ const uint16_t PROGMEM encoder_map[][NUM_ENCODERS][2] = {
 };
 #endif // ENCODER_MAP_ENABLE
 
+const HSV LAYER_COLORS[] = {
+    [WIN_BASE] = {HSV_MAGENTA},
+    [WIN_FN]   = {HSV_GREEN},
+    [MAC_BASE] = {HSV_CYAN},
+    [MAC_FN]   = {HSV_CORAL},
+};
+
 // clang-format on
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (!process_record_keychron_common(keycode, record)) {
         return false;
     }
     return true;
+}
+
+void set_layer_color(uint16_t layer, uint8_t led_min, uint8_t led_max) {
+    HSV hsv = LAYER_COLORS[layer];
+    if (hsv.v > rgb_matrix_get_val()) {
+        hsv.v = rgb_matrix_get_val();
+    }
+
+    RGB rgb = hsv_to_rgb(hsv);
+    for (uint8_t i = led_min; i < led_max; i++) {
+        if (HAS_FLAGS(g_led_config.flags[i], 0x01)) { // 0x01 == LED_FLAG_MODIFIER
+            rgb_matrix_set_color(i, rgb.r, rgb.g, rgb.b);
+        }
+    }
+}
+
+bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
+    set_layer_color(get_highest_layer(layer_state | default_layer_state), led_min, led_max);
+    return false;
 }
