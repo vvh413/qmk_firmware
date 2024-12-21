@@ -14,10 +14,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stdint.h>
+#include <string.h>
 #include "color.h"
+#include "eeprom.h"
 #include "keycodes.h"
+#include "via.h"
 #include QMK_KEYBOARD_H
 #include "keychron_common.h"
+#include "config.h"
 
 enum layers {
     WIN_BASE,
@@ -66,14 +71,38 @@ const uint16_t PROGMEM encoder_map[][NUM_ENCODERS][2] = {
 };
 #endif // ENCODER_MAP_ENABLE
 
-const HSV LAYER_COLORS[] = {
+typedef union {
+    uint8_t raw[13];
+    struct {
+        bool init;
+        HSV layer_colors[4];
+    };
+} custom_config_t;
+custom_config_t custom_config;
+
+const HSV DEFAULT_LAYER_COLORS[] = {
     [WIN_BASE] = {HSV_MAGENTA},
     [WIN_FN]   = {HSV_GREEN},
     [MAC_BASE] = {HSV_CYAN},
     [MAC_FN]   = {HSV_CORAL},
 };
 
+enum via_layer_color_value {
+    id_layer_color = 1,
+    id_reset_layer_colors = 2
+};
+
 // clang-format on
+void keyboard_post_init_user(void) {
+    eeprom_read_block(&custom_config, ((void *)VIA_EEPROM_CUSTOM_CONFIG_ADDR), sizeof(custom_config_t));
+
+    if (!custom_config.init) {
+        custom_config.init = true;
+        memcpy(custom_config.layer_colors, DEFAULT_LAYER_COLORS, sizeof(DEFAULT_LAYER_COLORS));
+        eeprom_update_block(&custom_config, ((void *)VIA_EEPROM_CUSTOM_CONFIG_ADDR), sizeof(custom_config_t));
+    }
+}
+
 bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     if (!process_record_keychron_common(keycode, record)) {
         return false;
@@ -82,7 +111,7 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 }
 
 void set_layer_color(uint16_t layer, uint8_t led_min, uint8_t led_max) {
-    HSV hsv = LAYER_COLORS[layer];
+    HSV hsv = custom_config.layer_colors[layer];
     if (hsv.v > rgb_matrix_get_val()) {
         hsv.v = rgb_matrix_get_val();
     }
@@ -98,4 +127,74 @@ void set_layer_color(uint16_t layer, uint8_t led_min, uint8_t led_max) {
 bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     set_layer_color(get_highest_layer(layer_state | default_layer_state), led_min, led_max);
     return false;
+}
+
+void layer_color_set_value(uint8_t *data) {
+    uint8_t *value_id   = &(data[0]);
+    uint8_t *value_data = &(data[1]);
+
+    switch (*value_id) {
+        case id_layer_color: {
+            uint8_t index = value_data[0];
+            if (index >= 0 && index < 4) {
+                custom_config.layer_colors[index].h = value_data[1];
+                custom_config.layer_colors[index].s = value_data[2];
+            }
+            break;
+        }
+        case id_reset_layer_colors: {
+            memcpy(custom_config.layer_colors, DEFAULT_LAYER_COLORS, sizeof(DEFAULT_LAYER_COLORS));
+            break;
+        }
+    }
+}
+
+void layer_color_get_value(uint8_t *data) {
+    uint8_t *value_id   = &(data[0]);
+    uint8_t *value_data = &(data[1]);
+
+    switch (*value_id) {
+        case id_layer_color: {
+            uint8_t index = value_data[0];
+            if (index >= 0 && index < 4) {
+                value_data[1] = custom_config.layer_colors[index].h;
+                value_data[2] = custom_config.layer_colors[index].s;
+            }
+        }
+    }
+}
+
+void layer_color_save(void) {
+    eeprom_update_block(&custom_config, ((void *)VIA_EEPROM_CUSTOM_CONFIG_ADDR), sizeof(custom_config_t));
+}
+
+void via_custom_value_command_kb(uint8_t *data, uint8_t length) {
+    uint8_t *command_id        = &(data[0]);
+    uint8_t *channel_id        = &(data[1]);
+    uint8_t *value_id_and_data = &(data[2]);
+
+    if (*channel_id == id_custom_channel) {
+        switch (*command_id) {
+            case id_custom_set_value: {
+                layer_color_set_value(value_id_and_data);
+                break;
+            }
+            case id_custom_get_value: {
+                layer_color_get_value(value_id_and_data);
+                break;
+            }
+            case id_custom_save: {
+                layer_color_save();
+                break;
+            }
+            default: {
+                // Unhandled message.
+                *command_id = id_unhandled;
+                break;
+            }
+        }
+        return;
+    }
+    // Return the unhandled state
+    *command_id = id_unhandled;
 }

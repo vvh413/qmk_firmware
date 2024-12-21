@@ -1,10 +1,7 @@
-#ifdef RGB_MATRIX_ENABLE
-
-/* solid #ff00ff */
-#    define RGB_MATRIX_DEFAULT_MODE RGB_MATRIX_SOLID_COLOR
-#    define RGB_MATRIX_DEFAULT_HUE 213
-#    define RGB_MATRIX_DEFAULT_SAT 255
+/* default solid effect */
+#define RGB_MATRIX_DEFAULT_MODE RGB_MATRIX_SOLID_COLOR
 /* default brightness = 102 = 6 * 17 = 40% */
-#    define RGB_MATRIX_DEFAULT_VAL 102
+#define RGB_MATRIX_DEFAULT_VAL 102
 
-#endif
+/* extend via custom config to 1 + 4 * 3 = 13 bytes */
+#define VIA_EEPROM_CUSTOM_CONFIG_SIZE 13
