@@ -6,6 +6,10 @@
 /* extend via custom config to 1 + 4 * 3 = 13 bytes */
 #define VIA_EEPROM_CUSTOM_CONFIG_SIZE 13
 
+/* extend macro eeprom size to 10KB and 32 macros */
+#define DYNAMIC_KEYMAP_MACRO_EEPROM_SIZE 10240
+#define DYNAMIC_KEYMAP_MACRO_COUNT 32
+
 /* disable unused rgb effects */
 #undef ENABLE_RGB_MATRIX_BAND_SPIRAL_VAL
 #undef ENABLE_RGB_MATRIX_BREATHING
