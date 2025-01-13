@@ -5,6 +5,22 @@
     "keycodes": ["qmk_lighting"],
     "menus": [
       {
+        "label": "Buffer",
+        "content": [
+          {
+            "label": "Buffer",
+            "content": [
+              {
+                "label": "Buffer delay",
+                "type": "range",
+                "options": [0, 65536],
+                "content": ["id_buffer_delay", 0, 6]
+              }
+            ]
+          }
+        ]
+      },
+      {
         "label": "Lighting",
         "content": [
           {
@@ -66,7 +82,9 @@
       {"name": "Bluetooth Host 2", "title": "Bluetooth Host 2", "shortName": "BTH2"},
       {"name": "Bluetooth Host 3", "title": "Bluetooth Host 3", "shortName": "BTH3"},
       {"name": "2.4G", "title": "2.4G", "shortName": "2.4G"},
-      {"name": "Battery Level", "title": "Show battery level", "shortName": "Batt"}
+      {"name": "Battery Level", "title": "Show battery level", "shortName": "Batt"},
+      {"name": "Buffer play 0", "title": "Play contents of buffer 0", "shortName": "BUF_P_0"},
+      {"name": "Buffer play 1", "title": "Play contents of buffer 1", "shortName": "BUF_P_1"}
     ],
     "matrix": {"rows": 6, "cols" : 21},
     "layouts": {

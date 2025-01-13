@@ -33,6 +33,12 @@ enum layers {
     MAC_BASE,
     MAC_FN,
 };
+
+enum custom_keycodes {
+    BUF_P_0 = SAFE_RANGE,
+    BUF_P_1,
+};
+
 // clang-format off
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     [WIN_BASE] = LAYOUT_ansi_109(
@@ -50,7 +56,7 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
         _______,            _______,  _______,  _______,  _______,  BAT_LVL,  NK_TOGG,  _______,  _______,  _______,  _______,              _______,              _______,            _______,  _______,  _______,
         _______,  _______,  _______,                                _______,                                _______,  _______,  _______,    _______,    _______,  _______,  _______,  _______,            _______,  _______),
     [MAC_BASE] = LAYOUT_ansi_109(
-        KC_ESC,   KC_BRID,  KC_BRIU,  KC_TASK,  KC_FILE,  RGB_VAD,  RGB_VAI,  KC_MPRV,  KC_MPLY,  KC_MNXT,  KC_MUTE,  KC_VOLD,  KC_VOLU,    KC_MUTE,    KC_PSCR,  RGB_TOG,  KC_F20,   MC_8,     MC_9,     MC_20,    MC_21,
+        KC_ESC,   KC_BRID,  KC_BRIU,  KC_TASK,  KC_FILE,  RGB_VAD,  RGB_VAI,  KC_MPRV,  KC_MPLY,  KC_MNXT,  KC_MUTE,  KC_VOLD,  KC_VOLU,    KC_MUTE,    KC_PSCR,  RGB_TOG,  KC_F20,   MC_8,     MC_9,     BUF_P_0,  BUF_P_1,
         KC_GRV,   KC_1,     KC_2,     KC_3,     KC_4,     KC_5,     KC_6,     KC_7,     KC_8,     KC_9,     KC_0,     KC_MINS,  KC_EQL,     KC_BSPC,    KC_INS,   KC_HOME,  KC_PGUP,  KC_NUM,   KC_PSLS,  KC_PAST,  KC_PMNS,
         KC_TAB,   KC_Q,     KC_W,     KC_E,     KC_R,     KC_T,     KC_Y,     KC_U,     KC_I,     KC_O,     KC_P,     KC_LBRC,  KC_RBRC,    KC_BSLS,    KC_DEL,   KC_END,   KC_PGDN,  MC_17,    MC_18,    MC_19,
         KC_CAPS,  KC_A,     KC_S,     KC_D,     KC_F,     KC_G,     KC_H,     KC_J,     KC_K,     KC_L,     KC_SCLN,  KC_QUOT,              KC_ENT,                                   MC_14,    MC_15,    MC_16,    KC_PPLS,
@@ -74,38 +80,81 @@ const uint16_t PROGMEM encoder_map[][NUM_ENCODERS][2] = {
 };
 #endif // ENCODER_MAP_ENABLE
 
-typedef union {
-    uint8_t raw[13];
-    struct {
-        bool init;
-        HSV layer_colors[4];
-    };
+typedef struct {
+    bool     init;
+    HSV      layer_colors[4];
+    uint8_t buffer_delay;
 } custom_config_t;
 custom_config_t custom_config;
 
-const HSV DEFAULT_LAYER_COLORS[] = {
-    [WIN_BASE] = {HSV_MAGENTA},
-    [WIN_FN]   = {HSV_GREEN},
-    [MAC_BASE] = {HSV_CYAN},
-    [MAC_FN]   = {HSV_CORAL},
+const custom_config_t DEFAULT_CUSTOM_CONFIG = {
+    .init         = false,
+    .layer_colors = {
+        [WIN_BASE] = {HSV_MAGENTA},
+        [WIN_FN]   = {HSV_GREEN},
+        [MAC_BASE] = {HSV_CYAN},
+        [MAC_FN]   = {HSV_CORAL},
+    },
+    .buffer_delay = 10,
 };
-
-enum via_layer_color_value {
-    id_layer_color = 1,
-    id_reset_layer_colors = 2
-};
-
-bool show_brightness = false;
-uint16_t brightness_timer = 0;
 
 // clang-format on
+enum via_layer_color_value {
+    id_layer_color        = 1,
+    id_reset_layer_colors = 2,
+    id_test               = 3,
+    id_mic_state          = 4,
+    id_buffer             = 5,
+    id_buffer_delay       = 6,
+};
+
+bool     show_brightness  = false;
+uint16_t brightness_timer = 0;
+
+bool     show_test  = false;
+uint8_t  test_idx   = 0;
+uint16_t test_timer = 0;
+
+bool mic_indicator = false;
+#define MIC_LED_ID 15
+
+#define BUF_SIZE 1024
+char buffer[2][BUF_SIZE] = {{0}, {0}};
+
 void keyboard_post_init_user(void) {
     eeprom_read_block(&custom_config, ((void *)VIA_EEPROM_CUSTOM_CONFIG_ADDR), sizeof(custom_config_t));
 
     if (!custom_config.init) {
         custom_config.init = true;
-        memcpy(custom_config.layer_colors, DEFAULT_LAYER_COLORS, sizeof(DEFAULT_LAYER_COLORS));
+        memcpy(&custom_config, &DEFAULT_CUSTOM_CONFIG, sizeof(DEFAULT_CUSTOM_CONFIG));
         eeprom_update_block(&custom_config, ((void *)VIA_EEPROM_CUSTOM_CONFIG_ADDR), sizeof(custom_config_t));
+    }
+}
+
+void brightness_turn_on(void) {
+    if (!show_brightness) {
+        show_brightness = true;
+    }
+    brightness_timer = timer_read();
+}
+
+void brightness_turn_off(void) {
+    if (show_brightness && timer_elapsed(brightness_timer) > 1000) {
+        show_brightness = false;
+    }
+}
+
+void test_turn_on(uint8_t index) {
+    if (!show_test) {
+        show_test = true;
+    }
+    test_idx   = index;
+    test_timer = timer_read();
+}
+
+void test_turn_off(void) {
+    if (show_test && timer_elapsed(test_timer) > 1000) {
+        show_test = false;
     }
 }
 
@@ -118,10 +167,20 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
         case RGB_VAD:
         case RGB_VAI: {
             if (record->event.pressed) {
-                if (!show_brightness) {
-                    show_brightness = true;
-                }
-                brightness_timer = timer_read();
+                brightness_turn_on();
+            }
+            break;
+        }
+        case KC_F20: {
+            if (record->event.pressed) {
+                mic_indicator = !mic_indicator;
+            }
+            break;
+        }
+        case BUF_P_0:
+        case BUF_P_1: {
+            if (record->event.pressed) {
+                SEND_STRING_DELAY(buffer[keycode - BUF_P_0], custom_config.buffer_delay);
             }
             break;
         }
@@ -130,9 +189,8 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
 }
 
 void matrix_scan_user() {
-    if (show_brightness && timer_elapsed(brightness_timer) > 1000) {
-        show_brightness = false;
-    }
+    brightness_turn_off();
+    test_turn_off();
 }
 
 void set_layer_color(uint16_t layer, uint8_t led_min, uint8_t led_max) {
@@ -153,18 +211,19 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     set_layer_color(get_highest_layer(layer_state | default_layer_state), led_min, led_max);
 
     if (show_brightness) {
-        for (uint8_t i = 0; i < 255 / 17; i++) {
-            if (i + 1 == rgb_matrix_get_val() / 17) {
-                RGB_MATRIX_INDICATOR_SET_COLOR(i, 255, 0, 0);
-            } else {
-                RGB_MATRIX_INDICATOR_SET_COLOR(i, 0, 0, 0);
-            }
-        }
+        uint8_t idx = (rgb_matrix_get_val() - 31) / 16;
+        RGB_MATRIX_INDICATOR_SET_COLOR(idx, 255, 0, 0);
+    }
+    if (show_test) {
+        RGB_MATRIX_INDICATOR_SET_COLOR(test_idx, 0, 0, 255);
+    }
+    if (mic_indicator) {
+        RGB_MATRIX_INDICATOR_SET_COLOR(MIC_LED_ID, 255, 0, 0);
     }
     return false;
 }
 
-void layer_color_set_value(uint8_t *data) {
+void custom_set_value(uint8_t *data) {
     uint8_t *value_id   = &(data[0]);
     uint8_t *value_data = &(data[1]);
 
@@ -178,13 +237,33 @@ void layer_color_set_value(uint8_t *data) {
             break;
         }
         case id_reset_layer_colors: {
-            memcpy(custom_config.layer_colors, DEFAULT_LAYER_COLORS, sizeof(DEFAULT_LAYER_COLORS));
+            memcpy(custom_config.layer_colors, DEFAULT_CUSTOM_CONFIG.layer_colors, sizeof(DEFAULT_CUSTOM_CONFIG.layer_colors));
+            break;
+        }
+        case id_test: {
+            test_turn_on(value_data[0]);
+            break;
+        }
+        case id_mic_state: {
+            mic_indicator = value_data[0];
+            break;
+        }
+        case id_buffer: {
+            uint16_t offset = (value_data[0] << 8) | value_data[1];
+            uint8_t  size   = value_data[2]; // size <= 27
+            if (size <= 27 && offset + size <= BUF_SIZE * 2) {
+                memcpy(&buffer[offset / BUF_SIZE][offset % BUF_SIZE], &value_data[3], size);
+            }
+            break;
+        }
+        case id_buffer_delay: {
+            custom_config.buffer_delay = value_data[0];
             break;
         }
     }
 }
 
-void layer_color_get_value(uint8_t *data) {
+void custom_get_value(uint8_t *data) {
     uint8_t *value_id   = &(data[0]);
     uint8_t *value_data = &(data[1]);
 
@@ -195,11 +274,28 @@ void layer_color_get_value(uint8_t *data) {
                 value_data[1] = custom_config.layer_colors[index].h;
                 value_data[2] = custom_config.layer_colors[index].s;
             }
+            break;
+        }
+        case id_mic_state: {
+            value_data[0] = mic_indicator;
+            break;
+        }
+        case id_buffer: {
+            uint16_t offset = (value_data[0] << 8) | value_data[1];
+            uint8_t  size   = value_data[2];
+            if (size <= 26 && offset + size <= BUF_SIZE * 2) {
+                memcpy(&value_data[3], &buffer[offset / BUF_SIZE][offset % BUF_SIZE], size);
+            }
+            break;
+        }
+        case id_buffer_delay: {
+            value_data[0] = custom_config.buffer_delay;
+            break;
         }
     }
 }
 
-void layer_color_save(void) {
+void custom_save(void) {
     eeprom_update_block(&custom_config, ((void *)VIA_EEPROM_CUSTOM_CONFIG_ADDR), sizeof(custom_config_t));
 }
 
@@ -211,15 +307,15 @@ void via_custom_value_command_kb(uint8_t *data, uint8_t length) {
     if (*channel_id == id_custom_channel) {
         switch (*command_id) {
             case id_custom_set_value: {
-                layer_color_set_value(value_id_and_data);
+                custom_set_value(value_id_and_data);
                 break;
             }
             case id_custom_get_value: {
-                layer_color_get_value(value_id_and_data);
+                custom_get_value(value_id_and_data);
                 break;
             }
             case id_custom_save: {
-                layer_color_save();
+                custom_save();
                 break;
             }
             default: {
