@@ -1,12 +1,12 @@
 /* default solid effect */
 #define RGB_MATRIX_DEFAULT_MODE RGB_MATRIX_SOLID_COLOR
-/* default brightness = 111 = 255 - 16 * 9 = ~43.5% */
-#define RGB_MATRIX_DEFAULT_VAL 111
+/* default brightness = 143 = 255 - 16 * (14 - 7) = ~56% */
+#define RGB_MATRIX_DEFAULT_VAL 143
 
 /* extend via custom config to 1 + 4 * 3 + 1 (align 1) = 14 bytes */
 #define VIA_EEPROM_CUSTOM_CONFIG_SIZE 14
 
-/* extend macro eeprom size to 10KB and 32 macros */
+/* extend macro eeprom size to 10KB and 64 macros */
 #define DYNAMIC_KEYMAP_MACRO_EEPROM_SIZE 10240
 #define DYNAMIC_KEYMAP_MACRO_COUNT 64
 
