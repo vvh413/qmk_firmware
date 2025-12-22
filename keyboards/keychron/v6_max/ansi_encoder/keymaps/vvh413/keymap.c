@@ -120,6 +120,9 @@ bool mic_indicator = false;
 
 #define BUF_SIZE 1024
 char buffer[2][BUF_SIZE] = {{0}, {0}};
+#define BUF_LED_0 18
+#define BUF_LED_1 19
+#define BUF_LED_LAYER MAC_BASE
 
 void keyboard_post_init_user(void) {
     eeprom_read_block(&custom_config, ((void *)VIA_EEPROM_CUSTOM_CONFIG_ADDR), sizeof(custom_config_t));
@@ -208,7 +211,8 @@ void set_layer_color(uint16_t layer, uint8_t led_min, uint8_t led_max) {
 }
 
 bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
-    set_layer_color(get_highest_layer(layer_state | default_layer_state), led_min, led_max);
+    uint16_t layer = get_highest_layer(layer_state | default_layer_state);
+    set_layer_color(layer, led_min, led_max);
 
     if (show_brightness) {
         uint8_t idx = (rgb_matrix_get_val() - 31) / 16;
@@ -219,6 +223,12 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     }
     if (mic_indicator) {
         RGB_MATRIX_INDICATOR_SET_COLOR(MIC_LED_ID, 255, 0, 0);
+    }
+    if ((strlen(buffer[0]) != 0) && (layer == BUF_LED_LAYER)) {
+        RGB_MATRIX_INDICATOR_SET_COLOR(BUF_LED_0, 255, 0, 0);
+    }
+    if ((strlen(buffer[1]) != 0) && (layer == BUF_LED_LAYER)) {
+        RGB_MATRIX_INDICATOR_SET_COLOR(BUF_LED_1, 255, 0, 0);
     }
     return false;
 }
