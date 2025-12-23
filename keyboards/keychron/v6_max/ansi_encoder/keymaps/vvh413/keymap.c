@@ -14,6 +14,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 #include "color.h"
@@ -124,6 +125,11 @@ char buffer[2][BUF_SIZE] = {{0}, {0}};
 #define BUF_LED_1 19
 #define BUF_LED_LAYER MAC_BASE
 
+bool dyn_macro_recording_1 = false;
+#define DYN_MACRO_LED_1 16
+bool dyn_macro_recording_2 = false;
+#define DYN_MACRO_LED_2 17
+
 void keyboard_post_init_user(void) {
     eeprom_read_block(&custom_config, ((void *)VIA_EEPROM_CUSTOM_CONFIG_ADDR), sizeof(custom_config_t));
 
@@ -229,6 +235,12 @@ bool rgb_matrix_indicators_advanced_user(uint8_t led_min, uint8_t led_max) {
     }
     if ((strlen(buffer[1]) != 0) && (layer == BUF_LED_LAYER)) {
         RGB_MATRIX_INDICATOR_SET_COLOR(BUF_LED_1, 255, 0, 0);
+    }
+    if (dyn_macro_recording_1) {
+        RGB_MATRIX_INDICATOR_SET_COLOR(DYN_MACRO_LED_1, 255, 0, 0);
+    }
+    if (dyn_macro_recording_2) {
+        RGB_MATRIX_INDICATOR_SET_COLOR(DYN_MACRO_LED_2, 255, 0, 0);
     }
     return false;
 }
@@ -338,4 +350,22 @@ void via_custom_value_command_kb(uint8_t *data, uint8_t length) {
     }
     // Return the unhandled state
     *command_id = id_unhandled;
+}
+
+void dynamic_macro_record_start_user(int8_t direction) {
+    if (direction == 1) {
+        dyn_macro_recording_1 = true;
+    }
+    if (direction == -1) {
+        dyn_macro_recording_2 = true;
+    }
+}
+
+void dynamic_macro_record_end_user(int8_t direction) {
+    if (direction == 1) {
+        dyn_macro_recording_1 = false;
+    }
+    if (direction == -1) {
+        dyn_macro_recording_2 = false;
+    }
 }
